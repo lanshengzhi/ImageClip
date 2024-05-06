@@ -194,20 +194,26 @@ int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	UINT  num = 0;          // number of image encoders
 	UINT  size = 0;         // size of the image encoder array in bytes
 
-	Gdiplus::ImageCodecInfo* pImageCodecInfo = NULL;
+	Gdiplus::ImageCodecInfo* pImageCodecInfo = nullptr;
 
-	Gdiplus::GetImageEncodersSize(&num, &size);
-	if (size == 0)
+	Gdiplus::Status stat = Gdiplus::GetImageEncodersSize(&num, &size);
+	if (stat != Gdiplus::Ok || size == 0 || num == 0) {
 		return -1;  // Failure
+	}
 
-	pImageCodecInfo = (Gdiplus::ImageCodecInfo*)(malloc(size));
-	if (pImageCodecInfo == NULL)
+	pImageCodecInfo = (Gdiplus::ImageCodecInfo*)malloc(size);
+	if (pImageCodecInfo == nullptr) {
 		return -1;  // Failure
+	}
 
-	GetImageEncoders(num, size, pImageCodecInfo);
+	memset(pImageCodecInfo, 0, size);
 
-	for (UINT j = 0; j < num; ++j)
-	{
+	if (Gdiplus::Ok != Gdiplus::GetImageEncoders(num, size, pImageCodecInfo)) {
+		free(pImageCodecInfo);
+		return -1;
+	}
+
+	for (UINT j = 0; j < num; ++j) {
 		if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
 		{
 			*pClsid = pImageCodecInfo[j].Clsid;
@@ -220,17 +226,22 @@ int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	return -1;  // Failure
 }
 
-void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segmentHeight, int imgOverlap) {
+void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segmentHeight, int imgOverlap) 
+{
+	CLSID clsid;
+	if (GetEncoderClsid(L"image/jpeg", &clsid) < 0) {
+		std::wcout << L"Get jpeg encoder fail" << std::endl;
+		return;
+	}
 
 	std::filesystem::path inputDir { directoryPath.GetString() };
 	std::filesystem::path outputDir { inputDir / "clips" }; // Create the output directory path 
-
 	
 	if (std::filesystem::exists(outputDir)) {
 		std::filesystem::remove_all(outputDir);
 	}
 
-	// Create the output directory, ignore if it already exists
+	// Create the output directory
 	std::filesystem::create_directories(outputDir);
 
 	// Traverse all files in the input directory
@@ -270,9 +281,6 @@ void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segme
 			newFileName.replace_filename(filePath.stem().wstring() + L"_" + std::to_wstring(segmentId++) + fileExtension.wstring());
 
 			// Save the image
-			CLSID clsid;
-			GetEncoderClsid(L"image/jpeg", &clsid);
-
 			newImg->Save(newFileName.c_str(), &clsid, NULL);
 
 			currentTop += segmentHeight - imgOverlap; // Reduce overlap by 80 pixels

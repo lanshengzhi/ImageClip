@@ -9,7 +9,7 @@
 
 #include <objidl.h>
 #include <gdiplus.h>
-using namespace Gdiplus;
+
 #pragma comment (lib,"Gdiplus.lib")
 
 #ifdef _DEBUG
@@ -55,8 +55,9 @@ BOOL CImageClipApp::InitInstance()
 	InitCtrls.dwICC = ICC_WIN95_CLASSES;
 	InitCommonControlsEx(&InitCtrls);
 
-	GdiplusStartupInput gdiplusStartupInput;
-	GdiplusStartup(&m_gdiplusToken, &gdiplusStartupInput, NULL);
+	ULONG_PTR gdiplusToken = 0;
+	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+	Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
 
 	CWinApp::InitInstance();
 
@@ -98,6 +99,8 @@ BOOL CImageClipApp::InitInstance()
 		TRACE(traceAppMsg, 0, "Warning: if you are using MFC controls on the dialog, you cannot #define _AFX_NO_MFC_CONTROLS_IN_DIALOGS.\n");
 	}
 
+	Gdiplus::GdiplusShutdown(gdiplusToken);
+
 	// Delete the shell manager created above.
 	if (pShellManager != nullptr)
 	{
@@ -113,12 +116,4 @@ BOOL CImageClipApp::InitInstance()
 	return FALSE;
 }
 
-int CImageClipApp::ExitInstance()
-{
-	// Cleanup GDI+
-	GdiplusShutdown(m_gdiplusToken);
-
-	// Perform any other cleanup before the application exits
-	return CWinApp::ExitInstance();
-}
 

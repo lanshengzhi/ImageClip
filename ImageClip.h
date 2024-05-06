@@ -23,10 +23,6 @@ public:
 // Overrides
 public:
 	virtual BOOL InitInstance();
-	virtual int ExitInstance();
-
-private:
-	ULONG_PTR m_gdiplusToken;
 
 // Implementation
 
