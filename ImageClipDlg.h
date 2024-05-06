@@ -24,7 +24,6 @@ public:
 // Implementation
 protected:
 	HICON m_hIcon;
-	CStatic m_staticPath;
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();
@@ -39,5 +38,9 @@ public:
 private:
 	int GetEncoderClsid(const WCHAR* format, CLSID* pClsid);
 	void SegmentAndSaveImages(const CString& directoryPath, int segmentHeight, int imgOverlap);
-	
+
+private:
+	CStatic m_staticPath;
+	CProgressCtrl m_progressCtrl;
+	CEdit m_editInfo;
 };

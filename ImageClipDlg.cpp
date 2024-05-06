@@ -64,6 +64,8 @@ void CImageClipDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_STATIC_PATH, m_staticPath);
+	DDX_Control(pDX, IDC_PROGRESS_SEGMENT, m_progressCtrl);
+	DDX_Control(pDX, IDC_EDIT_INFO, m_editInfo);
 }
 
 BEGIN_MESSAGE_MAP(CImageClipDlg, CDialogEx)
@@ -107,6 +109,9 @@ BOOL CImageClipDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
+	m_progressCtrl.SetRange(0, 100);
+	m_progressCtrl.SetPos(0);
+	m_editInfo.SetWindowTextW(_T("请先选择图片所在文件夹"));
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -165,9 +170,20 @@ HCURSOR CImageClipDlg::OnQueryDragIcon()
 void CImageClipDlg::OnBnClickedButtonSegment()
 {
 	// TODO: Add your control notification handler code here
-	CString path;
-	m_staticPath.GetWindowTextW(path);
-	SegmentAndSaveImages(path, 3300, 80);
+	CString imgPath;
+	m_staticPath.GetWindowTextW(imgPath);
+
+	if (std::filesystem::exists(imgPath.GetString()) && std::filesystem::is_directory(imgPath.GetString())) {
+		m_editInfo.SetWindowTextW(_T("裁剪中"));
+		this->UpdateWindow();
+		SegmentAndSaveImages(imgPath, 3300, 80);
+		std::filesystem::path outputDir{ std::filesystem::path(imgPath.GetString()) / "clips" };
+		std::wstring message{ _T("裁剪结束，裁剪图片所在目录：") + outputDir.wstring() };
+		m_editInfo.SetWindowTextW(message.c_str());
+	}
+	else {
+		m_editInfo.SetWindowTextW(_T("选择的图片文件夹不存在，请选择图片文件夹。"));
+	}
 }
 
 
@@ -178,13 +194,16 @@ void CImageClipDlg::OnBnClickedButtonBrowse()
 	CFolderPickerDialog folderPickerDialog(NULL, 0, this, sizeof(OPENFILENAME));
 
 	// 显示对话框并检查用户的操作
-	if (folderPickerDialog.DoModal() == IDOK)
-	{
+	if (folderPickerDialog.DoModal() == IDOK) {
 		// 获取选中的文件夹路径
 		CString folderPath = folderPickerDialog.GetFolderPath();
 
 		// 使用选中的文件夹路径
 		m_staticPath.SetWindowTextW(folderPath.GetString());
+		m_editInfo.SetWindowTextW(_T("下一步可以开始裁剪"));
+	}
+	else {
+		m_editInfo.SetWindowTextW(_T("未选择图片文件夹，请选择图片所在文件夹。"));
 	}
 }
 
@@ -241,6 +260,9 @@ void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segme
 		std::filesystem::remove_all(outputDir);
 	}
 
+	int totalFiles = std::distance(std::filesystem::directory_iterator(inputDir), std::filesystem::directory_iterator{});
+	int processedFiles = 0;
+
 	// Create the output directory
 	std::filesystem::create_directories(outputDir);
 
@@ -281,9 +303,13 @@ void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segme
 			newFileName.replace_filename(filePath.stem().wstring() + L"_" + std::to_wstring(segmentId++) + fileExtension.wstring());
 
 			// Save the image
-			newImg->Save(newFileName.c_str(), &clsid, NULL);
+			newImg->Save(newFileName.c_str(), &clsid, nullptr);
 
 			currentTop += segmentHeight - imgOverlap; // Reduce overlap by 80 pixels
 		}
+
+		++processedFiles;
+		int progress = static_cast<int>(100.0 * processedFiles / totalFiles);
+		m_progressCtrl.SetPos(progress);
 	}
 }
