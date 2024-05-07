@@ -176,7 +176,7 @@ void CImageClipDlg::OnBnClickedButtonSegment()
 	if (std::filesystem::exists(imgPath.GetString()) && std::filesystem::is_directory(imgPath.GetString())) {
 		m_editInfo.SetWindowTextW(_T("裁剪中"));
 		this->UpdateWindow();
-		SegmentAndSaveImages(imgPath, 3300, 80);
+		SegmentAndSaveImages(imgPath, SEGMENT_HEIGHT, IMAGE_OVERLAP);
 		std::filesystem::path outputDir{ std::filesystem::path(imgPath.GetString()) / "clips" };
 		std::wstring message{ _T("裁剪结束，裁剪图片所在目录：") + outputDir.wstring() };
 		m_editInfo.SetWindowTextW(message.c_str());
@@ -233,8 +233,7 @@ int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	}
 
 	for (UINT j = 0; j < num; ++j) {
-		if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0)
-		{
+		if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
 			*pClsid = pImageCodecInfo[j].Clsid;
 			free(pImageCodecInfo);
 			return j;  // Success

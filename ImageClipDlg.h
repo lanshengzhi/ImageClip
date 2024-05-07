@@ -17,7 +17,7 @@ public:
 	enum { IDD = IDD_IMAGECLIP_DIALOG };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV support
 
 
@@ -43,4 +43,6 @@ private:
 	CStatic m_staticPath;
 	CProgressCtrl m_progressCtrl;
 	CEdit m_editInfo;
+	static constexpr int IMAGE_OVERLAP = 80;	
+	static constexpr int SEGMENT_HEIGHT = 3300;
 };
