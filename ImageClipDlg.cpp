@@ -281,7 +281,8 @@ void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segme
 
 		if (image->GetLastStatus() != Gdiplus::Ok) {
 			std::wcout << L"Failed to load image: " << filePath << std::endl;
-			continue; // Skip if load fails
+			--totalFiles;
+			continue; // Skip if load fails, not image file
 		}
 
 		int width = image->GetWidth();
