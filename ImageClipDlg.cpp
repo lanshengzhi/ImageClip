@@ -8,7 +8,6 @@
 #include "afxdialogex.h"
 
 #include <gdiplus.h>
-#include <filesystem>
 #include <iostream>
 #include <memory>
 
@@ -170,15 +169,14 @@ HCURSOR CImageClipDlg::OnQueryDragIcon()
 void CImageClipDlg::OnBnClickedButtonSegment()
 {
 	// TODO: Add your control notification handler code here
-	CString imgPath;
-	m_staticPath.GetWindowTextW(imgPath);
 
-	if (std::filesystem::exists(imgPath.GetString()) && std::filesystem::is_directory(imgPath.GetString())) {
+	if (std::filesystem::exists(m_imageSrcDir) && std::filesystem::is_directory(m_imageSrcDir)) {
 		m_editInfo.SetWindowTextW(_T("裁剪中"));
-		this->UpdateWindow();
-		SegmentAndSaveImages(imgPath, SEGMENT_HEIGHT, IMAGE_OVERLAP);
-		std::filesystem::path outputDir{ std::filesystem::path(imgPath.GetString()) / "clips" };
-		std::wstring message{ _T("裁剪结束，裁剪图片所在目录：") + outputDir.wstring() };
+		UpdateWindow();	// Show prev windows text
+
+		SegmentAndSaveImages();
+
+		std::wstring message{ _T("裁剪结束，裁剪图片所在目录：") + m_imageDstDir.wstring()};
 		m_editInfo.SetWindowTextW(message.c_str());
 	}
 	else {
@@ -190,21 +188,29 @@ void CImageClipDlg::OnBnClickedButtonSegment()
 void CImageClipDlg::OnBnClickedButtonBrowse()
 {
 	// TODO: Add your control notification handler code here
-	// 创建并初始化文件夹选择对话框
+	// Create and initialize the folder picker dialog
 	CFolderPickerDialog folderPickerDialog(NULL, 0, this, sizeof(OPENFILENAME));
 
-	// 显示对话框并检查用户的操作
+	// Display the dialog and check the user's action
 	if (folderPickerDialog.DoModal() == IDOK) {
-		// 获取选中的文件夹路径
+		// Retrieve the selected folder path
 		CString folderPath = folderPickerDialog.GetFolderPath();
 
-		// 使用选中的文件夹路径
+		// Use the selected folder path
 		m_staticPath.SetWindowTextW(folderPath.GetString());
 		m_editInfo.SetWindowTextW(_T("下一步可以开始裁剪"));
+
+		UpateImageDirectory(folderPath);
 	}
 	else {
 		m_editInfo.SetWindowTextW(_T("未选择图片文件夹，请选择图片所在文件夹。"));
 	}
+}
+
+void CImageClipDlg::UpateImageDirectory(CString& imgSrcDir)
+{
+	m_imageSrcDir = imgSrcDir.GetString();
+	m_imageDstDir = m_imageSrcDir / "Clips";
 }
 
 // Reference code : https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-retrieving-the-class-identifier-for-an-encoder-use
@@ -244,29 +250,26 @@ int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	return -1;  // Failure
 }
 
-void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segmentHeight, int imgOverlap) 
+void CImageClipDlg::SegmentAndSaveImages()
 {
 	CLSID clsid;
 	if (GetEncoderClsid(L"image/jpeg", &clsid) < 0) {
 		std::wcout << L"Get jpeg encoder fail" << std::endl;
 		return;
 	}
-
-	std::filesystem::path inputDir { directoryPath.GetString() };
-	std::filesystem::path outputDir { inputDir / "clips" }; // Create the output directory path 
 	
-	if (std::filesystem::exists(outputDir)) {
-		std::filesystem::remove_all(outputDir);
+	if (std::filesystem::exists(m_imageSrcDir)) {
+		std::filesystem::remove_all(m_imageDstDir);
 	}
 
-	int totalFiles = std::distance(std::filesystem::directory_iterator(inputDir), std::filesystem::directory_iterator{});
+	int totalFiles = std::distance(std::filesystem::directory_iterator(m_imageSrcDir), std::filesystem::directory_iterator{});
 	int processedFiles = 0;
 
 	// Create the output directory
-	std::filesystem::create_directories(outputDir);
+	std::filesystem::create_directories(m_imageDstDir);
 
 	// Traverse all files in the input directory
-	for (const auto& entry : std::filesystem::directory_iterator(inputDir)) {
+	for (const auto& entry : std::filesystem::directory_iterator(m_imageSrcDir)) {
 		const auto& filePath = entry.path();
 
 		if (entry.is_directory()) {	// Ensure it is a file
@@ -290,7 +293,7 @@ void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segme
 		int segmentId = 0;  // Image segment index
 
 		while (currentTop < height) {
-			int currentBottom = min(currentTop + segmentHeight, height);
+			int currentBottom = min(currentTop + SEGMENT_HEIGHT, height);
 			Gdiplus::Rect rect(0, currentTop, width, currentBottom - currentTop);
 
 			// Create a new bitmap to save the clipped image
@@ -299,13 +302,13 @@ void CImageClipDlg::SegmentAndSaveImages(const CString& directoryPath, int segme
 			graphics.DrawImage(image.get(), 0, 0, rect.X, rect.Y, rect.Width, rect.Height, Gdiplus::UnitPixel);
 
 			// Build the new file path
-			std::filesystem::path newFileName = outputDir / filePath.filename();
+			std::filesystem::path newFileName = m_imageDstDir / filePath.filename();
 			newFileName.replace_filename(filePath.stem().wstring() + L"_" + std::to_wstring(segmentId++) + fileExtension.wstring());
 
 			// Save the image
 			newImg->Save(newFileName.c_str(), &clsid, nullptr);
 
-			currentTop += segmentHeight - imgOverlap; // Reduce overlap by 80 pixels
+			currentTop += SEGMENT_HEIGHT - IMAGE_OVERLAP; // Reduce overlap by imgOverlap pixels
 		}
 
 		++processedFiles;

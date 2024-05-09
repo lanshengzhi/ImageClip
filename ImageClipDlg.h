@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <filesystem>
+
 
 // CImageClipDlg dialog
 class CImageClipDlg : public CDialogEx
@@ -37,12 +39,16 @@ public:
 
 private:
 	int GetEncoderClsid(const WCHAR* format, CLSID* pClsid);
-	void SegmentAndSaveImages(const CString& directoryPath, int segmentHeight, int imgOverlap);
+	void UpateImageDirectory(CString &imgSrcDir);
+	void SegmentAndSaveImages();
 
 private:
 	CStatic m_staticPath;
 	CProgressCtrl m_progressCtrl;
 	CEdit m_editInfo;
+	std::filesystem::path m_imageSrcDir;	// Image source directory, initialized in OnBnClickedButtonBrowse()
+	std::filesystem::path m_imageDstDir;	// Image destination directory
+
 	static constexpr int IMAGE_OVERLAP = 80;	
-	static constexpr int SEGMENT_HEIGHT = 3300;
+	static constexpr int SEGMENT_HEIGHT = 3400;
 };
