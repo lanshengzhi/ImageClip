@@ -5,3 +5,4 @@
 
 # 使用截图
 
+![image](https://github.com/lanshengzhi/ImageClip/assets/34907810/cd10b92c-97a9-44d5-b998-5e288c154ed7)
