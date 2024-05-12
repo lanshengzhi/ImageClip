@@ -170,15 +170,25 @@ void CImageClipDlg::OnBnClickedButtonSegment()
 {
 	// TODO: Add your control notification handler code here
 
-	if (std::filesystem::exists(m_imageSrcDir) && std::filesystem::is_directory(m_imageSrcDir)) {
+	if (std::filesystem::exists(m_imageSrcDir) 
+		&& std::filesystem::is_directory(m_imageSrcDir)) {
+		
 		m_editInfo.SetWindowTextW(_T("裁剪中"));
+
+		if (std::filesystem::exists(m_imageDstDir)) {
+			std::filesystem::remove_all(m_imageDstDir);
+		}
+
+		// Create the output directory
+		std::filesystem::create_directories(m_imageDstDir);
+
 		UpdateWindow();	// Show prev windows text
 
-		SegmentAndSaveImages();
+		SegmentAndSaveImages(m_imageSrcDir, m_imageDstDir, [this](int progress) {m_progressCtrl.SetPos(progress); });
 
 		std::wstring message{ _T("裁剪结束，裁剪图片所在目录：") + m_imageDstDir.wstring()};
 		m_editInfo.SetWindowTextW(message.c_str());
-	}
+	} 
 	else {
 		m_editInfo.SetWindowTextW(_T("选择的图片文件夹不存在，请选择图片文件夹。"));
 	}
@@ -250,29 +260,23 @@ int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	return -1;  // Failure
 }
 
-void CImageClipDlg::SegmentAndSaveImages()
+void CImageClipDlg::SegmentAndSaveImages(std::filesystem::path &imgSrcDir, std::filesystem::path &imgDstDir, std::function<void(int)> updateProgress)
 {
 	CLSID clsid;
 	if (GetEncoderClsid(L"image/jpeg", &clsid) < 0) {
 		std::wcout << L"Get jpeg encoder fail" << std::endl;
 		return;
 	}
-	
-	if (std::filesystem::exists(m_imageSrcDir)) {
-		std::filesystem::remove_all(m_imageDstDir);
-	}
 
-	int totalFiles = std::distance(std::filesystem::directory_iterator(m_imageSrcDir), std::filesystem::directory_iterator{});
+	int totalFiles = std::distance(std::filesystem::directory_iterator(imgSrcDir), std::filesystem::directory_iterator{});
 	int processedFiles = 0;
 
-	// Create the output directory
-	std::filesystem::create_directories(m_imageDstDir);
-
 	// Traverse all files in the input directory
-	for (const auto& entry : std::filesystem::directory_iterator(m_imageSrcDir)) {
+	for (const auto& entry : std::filesystem::directory_iterator(imgSrcDir)) {
 		const auto& filePath = entry.path();
 
 		if (entry.is_directory()) {	// Ensure it is a file
+			--totalFiles;
 			continue;
 		}
 		
@@ -302,7 +306,7 @@ void CImageClipDlg::SegmentAndSaveImages()
 			graphics.DrawImage(image.get(), 0, 0, rect.X, rect.Y, rect.Width, rect.Height, Gdiplus::UnitPixel);
 
 			// Build the new file path
-			std::filesystem::path newFileName = m_imageDstDir / filePath.filename();
+			std::filesystem::path newFileName = imgDstDir / filePath.filename();
 			newFileName.replace_filename(filePath.stem().wstring() + L"_" + std::to_wstring(segmentId++) + fileExtension.wstring());
 
 			// Save the image
@@ -313,6 +317,6 @@ void CImageClipDlg::SegmentAndSaveImages()
 
 		++processedFiles;
 		int progress = static_cast<int>(100.0 * processedFiles / totalFiles);
-		m_progressCtrl.SetPos(progress);
+		updateProgress(progress);
 	}
 }

@@ -5,7 +5,7 @@
 #pragma once
 
 #include <filesystem>
-
+#include <functional>
 
 // CImageClipDlg dialog
 class CImageClipDlg : public CDialogEx
@@ -40,7 +40,7 @@ public:
 private:
 	int GetEncoderClsid(const WCHAR* format, CLSID* pClsid);
 	void UpateImageDirectory(CString &imgSrcDir);
-	void SegmentAndSaveImages();
+	void SegmentAndSaveImages(std::filesystem::path &imgSrcDir, std::filesystem::path &imgDstDir, std::function<void(int)> updateProgress);
 
 private:
 	CStatic m_staticPath;
