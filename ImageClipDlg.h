@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <string>
 
 // CImageClipDlg dialog
 class CImageClipDlg : public CDialogEx
@@ -38,7 +39,7 @@ public:
 	afx_msg void OnBnClickedButtonBrowse();
 
 private:
-	int GetEncoderClsid(const WCHAR* format, CLSID* pClsid);
+	int GetEncoderClsid(const std::wstring& format, CLSID& clsid);
 	void UpateImageDirectory(CString &imgSrcDir);
 	void SegmentAndSaveImages(std::filesystem::path &imgSrcDir, std::filesystem::path &imgDstDir, std::function<void(int)> updateProgress);
 

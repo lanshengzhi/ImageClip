@@ -224,24 +224,20 @@ void CImageClipDlg::UpateImageDirectory(CString& imgSrcDir)
 }
 
 // Reference code : https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-retrieving-the-class-identifier-for-an-encoder-use
-int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
+int CImageClipDlg::GetEncoderClsid(const std::wstring& format, CLSID& clsid)
 {
 	UINT  num = 0;          // number of image encoders
 	UINT  size = 0;         // size of the image encoder array in bytes
-
-	Gdiplus::ImageCodecInfo* pImageCodecInfo = nullptr;
 
 	Gdiplus::Status stat = Gdiplus::GetImageEncodersSize(&num, &size);
 	if (stat != Gdiplus::Ok || size == 0 || num == 0) {
 		return -1;  // Failure
 	}
 
-	pImageCodecInfo = (Gdiplus::ImageCodecInfo*)malloc(size);
+	Gdiplus::ImageCodecInfo* pImageCodecInfo = (Gdiplus::ImageCodecInfo*)malloc(size);
 	if (pImageCodecInfo == nullptr) {
 		return -1;  // Failure
 	}
-
-	memset(pImageCodecInfo, 0, size);
 
 	if (Gdiplus::Ok != Gdiplus::GetImageEncoders(num, size, pImageCodecInfo)) {
 		free(pImageCodecInfo);
@@ -249,8 +245,8 @@ int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 	}
 
 	for (UINT j = 0; j < num; ++j) {
-		if (wcscmp(pImageCodecInfo[j].MimeType, format) == 0) {
-			*pClsid = pImageCodecInfo[j].Clsid;
+		if (std::wstring(pImageCodecInfo[j].MimeType) == format) {
+			clsid = pImageCodecInfo[j].Clsid;
 			free(pImageCodecInfo);
 			return j;  // Success
 		}
@@ -263,7 +259,7 @@ int CImageClipDlg::GetEncoderClsid(const WCHAR* format, CLSID* pClsid)
 void CImageClipDlg::SegmentAndSaveImages(std::filesystem::path &imgSrcDir, std::filesystem::path &imgDstDir, std::function<void(int)> updateProgress)
 {
 	CLSID clsid;
-	if (GetEncoderClsid(L"image/jpeg", &clsid) < 0) {
+	if (GetEncoderClsid(L"image/jpeg", clsid) < 0) {
 		std::wcout << L"Get jpeg encoder fail" << std::endl;
 		return;
 	}
